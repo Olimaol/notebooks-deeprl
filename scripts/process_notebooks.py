@@ -60,6 +60,8 @@ Arguments
 - --source-dir     : Source notebooks directory (default: solutions)
 - --filtered-dir   : Output folder for filtered notebooks (default: notebooks)
 - --executed-dir   : Output folder for executed notebooks (default: solutions-output)
+- --include        : One or more notebook names to include for execution; when provided,
+                     only these will be executed (exclude list still applies)
 - --exclude        : One or more notebook names to skip executing (still filtered)
 - --recursive      : Recurse into subdirectories of the source directory
 - --timeout        : Per-cell execution timeout in seconds (default: 1200)
@@ -218,6 +220,7 @@ def process(
     source_dir: Path,
     filtered_dir: Path,
     executed_dir: Path,
+    include_execute: Set[str],
     exclude_execute: Set[str],
     recursive: bool,
     timeout: int,
@@ -267,6 +270,8 @@ def process(
         # 2) Execute original notebook and save with outputs (unless excluded)
         if not do_execute:
             print(f"Skip execute (disabled): {rel}")
+        elif include_execute and rel.name not in include_execute:
+            print(f"Skip execute (not included): {rel}")
         elif rel.name in exclude_execute:
             print(f"Skip execute (excluded): {rel}")
         else:
@@ -312,6 +317,15 @@ def parse_args(argv: List[str]) -> argparse.Namespace:
         type=Path,
         default=Path("solutions-output"),
         help="Directory to write executed notebooks with outputs (default: solutions-output)",
+    )
+    parser.add_argument(
+        "--include",
+        nargs="*",
+        default=[],
+        help=(
+            "Notebook names to include for execution (basename or path; repeatable). "
+            "When provided, only these notebooks will be executed (exclude still applies)."
+        ),
     )
     parser.add_argument(
         "--exclude",
@@ -374,6 +388,7 @@ def main(argv: List[str] | None = None):
         else ns.executed_dir
     )
 
+    include_set = normalize_names(ns.include)
     exclude_set = normalize_names(ns.exclude)
 
     # Resolve kernel name: prefer user-provided, else auto-detect matching current interpreter
@@ -400,6 +415,10 @@ def main(argv: List[str] | None = None):
     print(f"  Source dir   : {source_dir}")
     print(f"  Filtered dir : {filtered_dir}")
     print(f"  Executed dir : {executed_dir}")
+    if include_set:
+        print(f"  Include exec : {sorted(include_set)}")
+    else:
+        print("  Include exec : []")
     if exclude_set:
         print(f"  Exclude exec : {sorted(exclude_set)}")
     else:
@@ -413,6 +432,7 @@ def main(argv: List[str] | None = None):
         source_dir=source_dir,
         filtered_dir=filtered_dir,
         executed_dir=executed_dir,
+        include_execute=include_set,
         exclude_execute=exclude_set,
         recursive=ns.recursive,
         timeout=ns.timeout,
