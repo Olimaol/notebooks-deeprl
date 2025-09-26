@@ -1,0 +1,95 @@
+name: Process notebooks
+
+on:
+  push:
+    branches:
+      - main
+      - '**'
+    paths:
+      - 'solutions/**/*.ipynb'
+      - 'scripts/process_notebooks.py'
+  workflow_dispatch:
+
+jobs:
+  process:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install nbformat nbclient jupyter-client ipykernel numpy
+
+      - name: Determine changed files
+        id: changes
+        shell: bash
+        run: |
+          set -euo pipefail
+          BEFORE="${{ github.event.before }}"
+          SHA="${{ github.sha }}"
+
+          if [[ -z "${BEFORE}" || "${BEFORE}" == "0000000000000000000000000000000000000000" ]]; then
+            # Fallback: only last commit when 'before' is unavailable (e.g. workflow_dispatch)
+            changed_files=$(git diff --name-only HEAD~1 || true)
+          else
+            changed_files=$(git diff --name-only "${BEFORE}" "${SHA}" || true)
+          fi
+
+          echo "Changed files:\n${changed_files}" | sed 's/^/  /'
+
+          # Detect if the processing script changed
+          if echo "${changed_files}" | grep -qE '^scripts/process_notebooks\.py$'; then
+            echo "changed_script=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed_script=false" >> "$GITHUB_OUTPUT"
+          fi
+
+          # Collect changed notebooks under solutions/ and output as basenames
+          include_list=$(echo "${changed_files}" | grep -E '^solutions/.*\.ipynb$' | xargs -r -n1 basename | sort -u | tr '\n' ' ' | sed 's/ *$//')
+          echo "include_list=${include_list}" >> "$GITHUB_OUTPUT"
+          echo "Include list: ${include_list}"
+
+      - name: Run processing script (full)
+        if: steps.changes.outputs.changed_script == 'true' || (github.event_name == 'workflow_dispatch' && steps.changes.outputs.include_list == '')
+        run: |
+          python scripts/process_notebooks.py
+
+      - name: Run processing script (only changed notebooks)
+        if: steps.changes.outputs.changed_script != 'true' && steps.changes.outputs.include_list != ''
+        run: |
+          python scripts/process_notebooks.py --include ${{ steps.changes.outputs.include_list }}
+
+      - name: Commit and push changes
+        if: always()
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          # Stage only the generated folders if they exist
+          if [ -d notebooks ]; then git add notebooks; fi
+          if [ -d solutions-output ]; then git add solutions-output; fi
+
+          # Only commit if there are staged changes
+          if git diff --staged --quiet; then
+            echo "No changes to commit."
+            exit 0
+          fi
+
+          git commit -m "CI: process notebooks (auto-generated updates)"
+          git push
