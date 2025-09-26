@@ -66,7 +66,7 @@ Committing clean notebooks keeps diffs small and avoids merge noise. The CI will
 - `solutions-output/` — Auto-generated executed solutions (with outputs). Do not edit.
 - `scripts/process_notebooks.py` — The script that performs filtering, execution, and adds the Colab badge.
 - `.github/workflows/process-notebooks.yml` — GitHub Actions workflow that runs the script on push/PR.
-- `requirements.txt` — Python dependencies used by the processing workflow.
+- `requirements.txt` — Python dependencies used by the processing workflow and notebooks.
 
 ## Running the processing script locally (optional)
 
