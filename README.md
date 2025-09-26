@@ -46,8 +46,13 @@ Tips for authoring solution cells:
 
 Please ensure the notebooks you commit in `solutions/` have their outputs cleared:
 
+- In VS Code:
+	- Open the notebook (`.ipynb`) in VS Code.
+	- Use the Command Palette (Ctrl+Shift+P) → "Notebook: Clear All Outputs".
+		- Alternatively, from the notebook toolbar, choose "Clear All Outputs".
+	- Save the file to persist the cleared state (Ctrl+S).
 - In JupyterLab/Notebook: Kernel → Restart Kernel and Clear All Outputs (or Edit → Clear All Outputs), then save.
-- With nbconvert (optional):
+- With nbconvert:
   ```bash
   jupyter nbconvert --clear-output --inplace solutions/<Notebook>.ipynb
   ```
