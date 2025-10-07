@@ -3,3 +3,5 @@ nbclient
 jupyter-client
 ipykernel
 numpy
+matplotlib
+jupyterlab
