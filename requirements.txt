@@ -5,3 +5,7 @@ ipykernel
 numpy
 matplotlib
 jupyterlab
+pygame
+swig
+moviepy==1.0.3
+gymnasium
