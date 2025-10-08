@@ -22,6 +22,11 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Set headless audio/video env
+        run: |
+          echo "SDL_VIDEODRIVER=dummy" >> $GITHUB_ENV
+          echo "SDL_AUDIODRIVER=dummy" >> $GITHUB_ENV
+
       - name: Set up Python
         uses: actions/setup-python@v6
         with:
