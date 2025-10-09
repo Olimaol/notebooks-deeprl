@@ -1,0 +1,5 @@
+# Requirements for process_notebooks.py
+nbformat
+nbclient
+jupyter-client
+ipykernel

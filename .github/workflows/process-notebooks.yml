@@ -32,12 +32,33 @@ jobs:
         with:
           python-version: '3.12'
           cache: 'pip'
-          cache-dependency-path: requirements.txt
+          cache-dependency-path: |
+            requirements_base.txt
+            requirements_process_notebooks.txt
+            requirements_tianshou.txt
 
       - name: Install dependencies
         run: |
+          set -euo pipefail
           python -m pip install --upgrade pip
-          pip install -r requirements.txt
+
+          # Create and prepare the usual environment (base + process_notebooks)
+          python -m venv .venv-usual
+          . .venv-usual/bin/activate
+          python -m pip install --upgrade pip
+          pip install -r requirements_process_notebooks.txt -r requirements_base.txt
+          deactivate
+
+          # Create and prepare the special tianshou environment (tianshou + process_notebooks)
+          python -m venv .venv-tianshou
+          . .venv-tianshou/bin/activate
+          python -m pip install --upgrade pip
+          pip install -r requirements_process_notebooks.txt -r requirements_tianshou.txt
+          deactivate
+
+          # Expose Python executables for later steps
+          echo "USUAL_PY=$PWD/.venv-usual/bin/python" >> $GITHUB_ENV
+          echo "TIANSHOU_PY=$PWD/.venv-tianshou/bin/python" >> $GITHUB_ENV
 
       - name: Determine changed files
         id: changes
@@ -71,12 +92,17 @@ jobs:
       - name: Run processing script (full)
         if: steps.changes.outputs.changed_script == 'true' || (github.event_name == 'workflow_dispatch' && steps.changes.outputs.include_list == '')
         run: |
-          python scripts/process_notebooks.py
+          "$USUAL_PY" scripts/process_notebooks.py --exclude '13-PPO.ipynb'
 
       - name: Run processing script (only changed notebooks)
         if: steps.changes.outputs.changed_script != 'true' && steps.changes.outputs.include_list != ''
         run: |
-          python scripts/process_notebooks.py --include ${{ steps.changes.outputs.include_list }}
+          "$USUAL_PY" scripts/process_notebooks.py --include ${{ steps.changes.outputs.include_list }} --exclude '13-PPO.ipynb'
+
+      - name: Run processing script for 13-PPO (special tianshou env)
+        if: steps.changes.outputs.changed_script == 'true' || (github.event_name == 'workflow_dispatch' && steps.changes.outputs.include_list == '') || contains(steps.changes.outputs.include_list, '13-PPO.ipynb')
+        run: |
+          "$TIANSHOU_PY" scripts/process_notebooks.py --include '13-PPO.ipynb'
 
       - name: Commit and push changes
         if: always()

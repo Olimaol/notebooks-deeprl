@@ -1,7 +1,4 @@
-nbformat
-nbclient
-jupyter-client
-ipykernel
+# Requirements for most notebooks
 numpy
 matplotlib
 jupyterlab

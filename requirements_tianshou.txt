@@ -1,0 +1,4 @@
+# Requirements for tianshou
+tianshou
+pygame
+moviepy==1.0.3
